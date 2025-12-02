@@ -60,30 +60,6 @@ export default function WorkshopDashboard() {
     setSelectedTicket(null)
   }
 
-  const handleExportReport = () => {
-    // Generar reporte CSV
-    const csvContent = [
-      ['ID', 'Paciente', 'Clínica', 'Doctor', 'Tipo', 'Arcada', 'Estado', 'Fecha'],
-      ...tickets.map(t => [
-        t.id,
-        t.patientName,
-        t.clinicName,
-        t.doctorName,
-        t.templateType,
-        t.arch,
-        t.status,
-        new Date(t.date).toLocaleDateString('es-ES')
-      ])
-    ].map(row => row.join(',')).join('\n')
-
-    const blob = new Blob([csvContent], { type: 'text/csv' })
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `reporte-tickets-${new Date().toISOString().split('T')[0]}.csv`
-    a.click()
-  }
-
   const pendingTickets = tickets.filter(t => t.status === 'Pendiente')
   const inProductionTickets = tickets.filter(t => t.status === 'En Producción')
   const readyTickets = tickets.filter(t => t.status === 'Lista para Entregar')
@@ -116,8 +92,8 @@ export default function WorkshopDashboard() {
             <div className="flex items-center gap-4">
               <img src="/lucvan-logo-web.png" alt="Lucván" className="h-12" />
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Módulo Taller / Producción</h1>
-                <p className="text-sm text-gray-600">Bienvenido, {currentUser?.name}</p>
+                <h1 className="hidden md:block text-2xl font-bold text-gray-900">Producción</h1>
+                <p className="hidden md:block text-sm text-gray-600">Bienvenido, {currentUser?.name}</p>
               </div>
             </div>
             <div className="flex gap-3">
@@ -142,16 +118,8 @@ export default function WorkshopDashboard() {
 
       {/* Stats */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex justify-between items-center mb-6">
+        <div className="mb-6">
           <h2 className="text-xl font-semibold text-gray-700">Dashboard de Producción</h2>
-          {currentUser?.role === 'admin' && (
-            <button
-              onClick={handleExportReport}
-              className="px-4 py-2 bg-green-500 text-white rounded-lg font-semibold hover:bg-green-600 transition flex items-center gap-2"
-            >
-              📊 Exportar Reporte
-            </button>
-          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
