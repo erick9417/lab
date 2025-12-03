@@ -81,18 +81,11 @@ export default function Login() {
         <div className="mt-6 text-center">
           <button
             type="button"
-            onClick={() => alert('La funcionalidad de restablecimiento de contraseña se implementará con Firebase. Se enviará un correo con el enlace para crear una nueva contraseña.')}
+            onClick={() => alert('Para restablecer tu contraseña, por favor contacta al administrador del sistema.')}
             className="text-sm text-blue-600 hover:text-blue-800 font-medium"
           >
             ¿Olvidaste tu contraseña?
           </button>
-        </div>
-
-        <div className="mt-8 p-4 bg-gray-50 rounded-lg text-sm text-gray-600">
-          <p className="font-semibold mb-2">Usuarios de prueba:</p>
-          <p>• Admin: admin@lucvan.com / admin123</p>
-          <p>• Clínica: clinica@lucvan.com / clinica123</p>
-          <p>• Taller: taller@lucvan.com / taller123</p>
         </div>
       </div>
     </div>
