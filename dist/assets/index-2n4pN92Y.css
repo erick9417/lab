@@ -1516,9 +1516,6 @@ video {
   --tw-text-opacity: 1;
   color: rgb(133 77 14 / var(--tw-text-opacity, 1));
 }
-.underline {
-  text-decoration-line: underline;
-}
 .opacity-30 {
   opacity: 0.3;
 }
@@ -1711,6 +1708,11 @@ body {
 .hover\:bg-\[\#ffd933\]:hover {
   --tw-bg-opacity: 1;
   background-color: rgb(255 217 51 / var(--tw-bg-opacity, 1));
+}
+
+.hover\:bg-blue-200:hover {
+  --tw-bg-opacity: 1;
+  background-color: rgb(191 219 254 / var(--tw-bg-opacity, 1));
 }
 
 .hover\:bg-blue-50:hover {

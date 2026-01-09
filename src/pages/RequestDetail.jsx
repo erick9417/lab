@@ -381,22 +381,54 @@ export default function RequestDetail() {
           )}
 
           {(Array.isArray(request.files) ? request.files.length > 0 : JSON.parse(request.files || '[]').length > 0) && (
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-3">Adjuntos</h2>
+            <div className="bg-white rounded-lg border border-gray-200 p-4">
+              <h2 className="text-lg font-semibold text-gray-900 mb-3">📎 Adjuntos ({Array.isArray(request.files) ? request.files.length : JSON.parse(request.files || '[]').length})</h2>
               <div className="space-y-2">
                 {(Array.isArray(request.files) ? request.files : JSON.parse(request.files || '[]')).map((file, idx) => {
                   const name = typeof file === 'string' ? file : (file.name || 'Archivo')
-                  const url = typeof file === 'object' ? (file.url || file.path || '') : ''
+                  let url = typeof file === 'object' ? (file.url || file.path || '') : ''
+                  
+                  // Mejorar URL si es relativa
+                  if (url && !url.startsWith('http')) {
+                    // Si es relativa, asegurar que tenga /api/uploads
+                    if (!url.startsWith('/api/uploads')) {
+                      url = `/api/uploads/${request.id}/${url}`
+                    }
+                  }
+                  
+                  const handleDownload = () => {
+                    if (url) {
+                      const link = document.createElement('a')
+                      link.href = url
+                      link.download = name || 'archivo'
+                      document.body.appendChild(link)
+                      link.click()
+                      document.body.removeChild(link)
+                    }
+                  }
+                  
                   return (
-                    <div key={idx} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
-                      <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      {url ? (
-                        <a href={url} download className="text-sm text-blue-600 hover:text-blue-800 underline">{name}</a>
-                      ) : (
-                        <span className="text-sm text-gray-700">{name} (solo nombre, sin archivo)</span>
-                      )}
+                    <div key={idx} className="flex items-center justify-between gap-3 p-3 bg-gray-50 hover:bg-gray-100 rounded border border-gray-200">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <svg className="w-5 h-5 text-gray-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">{name}</p>
+                          {url && <p className="text-xs text-gray-500 truncate">{url}</p>}
+                        </div>
+                      </div>
+                      <button
+                        onClick={handleDownload}
+                        disabled={!url}
+                        className={`px-3 py-1.5 rounded text-xs font-semibold whitespace-nowrap flex-shrink-0 transition ${
+                          url
+                            ? 'bg-blue-100 text-blue-700 hover:bg-blue-200 cursor-pointer'
+                            : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                        }`}
+                      >
+                        {url ? '⬇️ Descargar' : '⚠️ Sin URL'}
+                      </button>
                     </div>
                   )
                 })}

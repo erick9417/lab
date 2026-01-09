@@ -13322,6 +13322,7 @@ function NewRequest() {
   const [footSide, setFootSide] = reactExports.useState("");
   const [shoeSize, setShoeSize] = reactExports.useState("");
   const [observations, setObservations] = reactExports.useState("");
+  const [isSubmitting, setIsSubmitting] = reactExports.useState(false);
   reactExports.useEffect(() => {
     const loadPatient = async () => {
       try {
@@ -13362,6 +13363,7 @@ function NewRequest() {
   };
   const handleSubmit = async (e2) => {
     e2.preventDefault();
+    if (isSubmitting) return;
     if (!doctorName || !templateType || !footSide || !shoeSize) {
       alert("Por favor completa los campos obligatorios: Doctor, Tipo de plantilla, Lado del pie y Talla de calzado.");
       return;
@@ -13371,6 +13373,7 @@ function NewRequest() {
       alert("La talla debe estar entre 19 y 50.");
       return;
     }
+    setIsSubmitting(true);
     try {
       const formData = new FormData();
       formData.append("patientId", parseInt(patientId));
@@ -13394,6 +13397,7 @@ function NewRequest() {
     } catch (err) {
       console.error("Error al crear solicitud:", err);
       alert("Error al crear la solicitud: " + err.message);
+      setIsSubmitting(false);
     }
   };
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "min-h-screen bg-[#F4F6F8]", children: [
@@ -13898,8 +13902,9 @@ function NewRequest() {
             "button",
             {
               type: "submit",
-              className: "flex-1 bg-[#F5C400] text-[#003C63] py-3 px-6 rounded-full font-bold hover:bg-[#ffd933] transition-all shadow-[0_12px_24px_-10px_rgba(0,60,99,0.25)] hover:shadow-[0_16px_32px_-12px_rgba(0,60,99,0.3)] hover:-translate-y-0.5",
-              children: "Enviar Solicitud"
+              disabled: isSubmitting,
+              className: `flex-1 py-3 px-6 rounded-full font-bold transition-all shadow-[0_12px_24px_-10px_rgba(0,60,99,0.25)] ${isSubmitting ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-[#F5C400] text-[#003C63] hover:bg-[#ffd933] hover:shadow-[0_16px_32px_-12px_rgba(0,60,99,0.3)] hover:-translate-y-0.5"}`,
+              children: isSubmitting ? "Enviando..." : "Enviar Solicitud"
             }
           ),
           /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -13907,7 +13912,8 @@ function NewRequest() {
             {
               type: "button",
               onClick: () => navigate(`/patient/${patientId}`),
-              className: "flex-1 bg-white border-2 border-[#0066A4] text-[#003C63] py-3 px-6 rounded-full font-semibold hover:bg-[#F4F6F8] transition-all",
+              disabled: isSubmitting,
+              className: `flex-1 py-3 px-6 rounded-full font-semibold transition-all ${isSubmitting ? "bg-gray-200 text-gray-400 cursor-not-allowed border-2 border-gray-300" : "bg-white border-2 border-[#0066A4] text-[#003C63] hover:bg-[#F4F6F8]"}`,
               children: "Cancelar"
             }
           )
@@ -14203,17 +14209,47 @@ function RequestDetail() {
             return hasRealValue(v2.izq) || hasRealValue(v2.der);
           }).map(([k2, v2]) => renderSpec(k2, v2)) })
         ] }),
-        (Array.isArray(request.files) ? request.files.length > 0 : JSON.parse(request.files || "[]").length > 0) && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-xl font-semibold text-gray-900 mb-3", children: "Adjuntos" }),
+        (Array.isArray(request.files) ? request.files.length > 0 : JSON.parse(request.files || "[]").length > 0) && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-white rounded-lg border border-gray-200 p-4", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("h2", { className: "text-lg font-semibold text-gray-900 mb-3", children: [
+            "📎 Adjuntos (",
+            Array.isArray(request.files) ? request.files.length : JSON.parse(request.files || "[]").length,
+            ")"
+          ] }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-2", children: (Array.isArray(request.files) ? request.files : JSON.parse(request.files || "[]")).map((file, idx) => {
             const name = typeof file === "string" ? file : file.name || "Archivo";
-            const url = typeof file === "object" ? file.url || file.path || "" : "";
-            return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 p-2 bg-gray-50 rounded", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("svg", { className: "w-5 h-5 text-gray-600", fill: "none", stroke: "currentColor", viewBox: "0 0 24 24", children: /* @__PURE__ */ jsxRuntimeExports.jsx("path", { strokeLinecap: "round", strokeLinejoin: "round", strokeWidth: 2, d: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" }) }),
-              url ? /* @__PURE__ */ jsxRuntimeExports.jsx("a", { href: url, download: true, className: "text-sm text-blue-600 hover:text-blue-800 underline", children: name }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-sm text-gray-700", children: [
-                name,
-                " (solo nombre, sin archivo)"
-              ] })
+            let url = typeof file === "object" ? file.url || file.path || "" : "";
+            if (url && !url.startsWith("http")) {
+              if (!url.startsWith("/api/uploads")) {
+                url = `/api/uploads/${request.id}/${url}`;
+              }
+            }
+            const handleDownload = () => {
+              if (url) {
+                const link = document.createElement("a");
+                link.href = url;
+                link.download = name || "archivo";
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+              }
+            };
+            return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between gap-3 p-3 bg-gray-50 hover:bg-gray-100 rounded border border-gray-200", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3 min-w-0", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("svg", { className: "w-5 h-5 text-gray-600 flex-shrink-0", fill: "none", stroke: "currentColor", viewBox: "0 0 24 24", children: /* @__PURE__ */ jsxRuntimeExports.jsx("path", { strokeLinecap: "round", strokeLinejoin: "round", strokeWidth: 2, d: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" }) }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "min-w-0", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm font-medium text-gray-900 truncate", children: name }),
+                  url && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs text-gray-500 truncate", children: url })
+                ] })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "button",
+                {
+                  onClick: handleDownload,
+                  disabled: !url,
+                  className: `px-3 py-1.5 rounded text-xs font-semibold whitespace-nowrap flex-shrink-0 transition ${url ? "bg-blue-100 text-blue-700 hover:bg-blue-200 cursor-pointer" : "bg-gray-200 text-gray-500 cursor-not-allowed"}`,
+                  children: url ? "⬇️ Descargar" : "⚠️ Sin URL"
+                }
+              )
             ] }, idx);
           }) })
         ] })
@@ -14734,4 +14770,4 @@ function App() {
 client.createRoot(document.getElementById("root")).render(
   /* @__PURE__ */ jsxRuntimeExports.jsx(React$1.StrictMode, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(App, {}) })
 );
-//# sourceMappingURL=index-C-HjYfUC.js.map
+//# sourceMappingURL=index-DWSluCUW.js.map
