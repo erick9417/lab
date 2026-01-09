@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react'
+import { apiFetch } from '../lib/api'
 
 const AuthContext = createContext({})
 
@@ -15,8 +16,8 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Simular carga de usuario desde localStorage
-    const storedUser = localStorage.getItem('lucvan_user')
+    // Cargar usuario desde sessionStorage (se limpia al cerrar navegador)
+    const storedUser = sessionStorage.getItem('lucvan_user')
     if (storedUser) {
       setCurrentUser(JSON.parse(storedUser))
     }
@@ -24,49 +25,73 @@ export const AuthProvider = ({ children }) => {
   }, [])
 
   const login = async (email, password) => {
-    // Mock login - Reemplazar con Firebase Auth
-    const mockUsers = [
-      { 
-        id: '1', 
-        email: 'admin@lucvan.com', 
-        password: 'admin123', 
-        role: 'admin', 
-        name: 'Administrador',
-        clinicId: null
-      },
-      { 
-        id: '2', 
-        email: 'clinica@lucvan.com', 
-        password: 'clinica123', 
-        role: 'clinic', 
-        name: 'Clínica Central',
-        clinicId: 'clinic1'
-      },
-      { 
-        id: '3', 
-        email: 'taller@lucvan.com', 
-        password: 'taller123', 
-        role: 'workshop', 
-        name: 'Taller Producción',
-        clinicId: null
-      },
-    ]
+    try {
+      const response = await apiFetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      })
 
-    const user = mockUsers.find(u => u.email === email && u.password === password)
-    
-    if (user) {
-      const { password, ...userWithoutPassword } = user
-      setCurrentUser(userWithoutPassword)
-      localStorage.setItem('lucvan_user', JSON.stringify(userWithoutPassword))
-      return userWithoutPassword
+      const contentType = response.headers.get('content-type') || ''
+      let parsed
+      let rawText
+
+      if (contentType.includes('application/json')) {
+        try {
+          parsed = await response.json()
+        } catch (e) {
+          // Fall back to text if JSON parsing fails
+          rawText = await response.text()
+        }
+      } else {
+        rawText = await response.text()
+      }
+
+      if (!response.ok) {
+        const message = parsed?.error
+          || parsed?.message
+          || (rawText ? rawText.slice(0, 200) : 'Error de autenticación')
+        throw new Error(message || 'Error de autenticación')
+      }
+
+      if (!parsed) {
+        // Respuesta no JSON en éxito: probablemente HTML por proxy/endpoint incorrecto
+        const snippet = (rawText || '').slice(0, 120)
+        throw new Error(`Respuesta inválida del servidor (no JSON). Verifica el backend/proxy. Detalle: ${snippet}`)
+      }
+
+      const data = parsed
+      // Log para debugging
+      console.log('Login response:', { 
+        user: data.user, 
+        name: data.user.name, 
+        email: data.user.email,
+        fallback: data.user.email.split('@')[0]
+      })
+      const userData = {
+        id: data.user.id,
+        name: data.user.name || data.user.email.split('@')[0],
+        email: data.user.email,
+        role: data.user.role,
+        clinicId: data.user.clinicId,
+        mustChangePassword: !!data.user.mustChangePassword,
+        token: data.token
+      }
+
+      setCurrentUser(userData)
+      sessionStorage.setItem('lucvan_user', JSON.stringify(userData))
+      return userData
+    } catch (error) {
+      console.error('Login error:', error)
+      throw new Error(error.message || 'Error de conexión')
     }
-    
-    throw new Error('Credenciales inválidas')
   }
 
   const logout = () => {
     setCurrentUser(null)
-    localStorage.removeItem('lucvan_user')
+    sessionStorage.removeItem('lucvan_user')
   }
 
   const value = {

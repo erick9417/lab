@@ -1,15 +1,23 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import Login from './pages/Login'
 import AdminDashboard from './pages/AdminDashboard'
+import UsersManagement from './pages/UsersManagement'
 import ClinicDashboard from './pages/ClinicDashboard'
-import WorkshopDashboard from './pages/WorkshopDashboard'
+import ProductionDashboard from './pages/ProductionDashboard'
+import ProductionTicketDetail from './pages/ProductionTicketDetail'
 import PatientDetail from './pages/PatientDetail'
 import NewRequest from './pages/NewRequest'
+import RequestDetail from './pages/RequestDetail'
+import InviteAccept from './pages/InviteAccept'
+import ForcePasswordChange from './pages/ForcePasswordChange'
+import ForgotPassword from './pages/ForgotPassword'
+import ResetPassword from './pages/ResetPassword'
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { currentUser, loading } = useAuth()
+  const location = useLocation()
 
   if (loading) {
     return (
@@ -23,8 +31,21 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     return <Navigate to="/login" replace />
   }
 
-  if (allowedRoles && !allowedRoles.includes(currentUser.role)) {
-    return <Navigate to="/" replace />
+  // Forzar cambio de contraseña si corresponde
+  if (currentUser.mustChangePassword && location.pathname !== '/change-password') {
+    return <Navigate to="/change-password" replace />
+  }
+
+  if (allowedRoles) {
+    const role = currentUser.role
+    const isAllowed =
+      allowedRoles.includes(role) ||
+      (role === 'production' && allowedRoles.includes('workshop')) ||
+      (role === 'workshop' && allowedRoles.includes('production'))
+
+    if (!isAllowed) {
+      return <Navigate to="/" replace />
+    }
   }
 
   return children
@@ -40,6 +61,9 @@ function AppRouter() {
         path="/login" 
         element={currentUser ? <Navigate to="/" replace /> : <Login />} 
       />
+
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       
       <Route 
         path="/" 
@@ -47,7 +71,17 @@ function AppRouter() {
           <ProtectedRoute>
             {currentUser?.role === 'admin' && <AdminDashboard />}
             {currentUser?.role === 'clinic' && <ClinicDashboard />}
-            {currentUser?.role === 'workshop' && <WorkshopDashboard />}
+            {(currentUser?.role === 'workshop' || currentUser?.role === 'production') && <ProductionDashboard />}
+          </ProtectedRoute>
+        } 
+      />
+
+      <Route 
+        path="/change-password" 
+        element={
+          <ProtectedRoute>
+            {/* Página dedicada para cambio obligatorio de contraseña */}
+            <ForcePasswordChange />
           </ProtectedRoute>
         } 
       />
@@ -61,6 +95,15 @@ function AppRouter() {
         } 
       />
 
+      <Route
+        path="/admin/users"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <UsersManagement />
+          </ProtectedRoute>
+        }
+      />
+
       <Route 
         path="/clinic" 
         element={
@@ -71,10 +114,19 @@ function AppRouter() {
       />
 
       <Route 
-        path="/workshop" 
+        path="/production" 
         element={
-          <ProtectedRoute allowedRoles={['admin', 'workshop']}>
-            <WorkshopDashboard />
+          <ProtectedRoute allowedRoles={['admin', 'workshop', 'production']}>
+            <ProductionDashboard />
+          </ProtectedRoute>
+        } 
+      />
+
+      <Route 
+        path="/ticket/:id" 
+        element={
+          <ProtectedRoute allowedRoles={['admin', 'workshop', 'production']}>
+            <ProductionTicketDetail />
           </ProtectedRoute>
         } 
       />
@@ -96,6 +148,17 @@ function AppRouter() {
           </ProtectedRoute>
         } 
       />
+
+      <Route 
+        path="/request/:id" 
+        element={
+          <ProtectedRoute allowedRoles={['admin', 'clinic']}>
+            <RequestDetail />
+          </ProtectedRoute>
+        } 
+      />
+
+      <Route path="/invite/accept" element={<InviteAccept />} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

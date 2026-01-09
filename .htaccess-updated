@@ -1,0 +1,21 @@
+RewriteEngine On
+
+# Evita cache en index.html
+<FilesMatch "index\.html">
+  Header set Cache-Control "no-cache, no-store, must-revalidate, proxy-revalidate"
+  Header set Pragma "no-cache"
+  Header set Expires "0"
+</FilesMatch>
+
+# Proxy /api mediante PHP hacia backend en localhost:4000
+RewriteCond %{REQUEST_URI} ^/api
+RewriteRule ^api/(.*)$ api_proxy.php?path=$1 [L,QSA]
+
+# Proxy para /uploads
+RewriteCond %{REQUEST_URI} ^/uploads
+RewriteRule ^uploads/(.*)$ http://localhost:4000/uploads/$1 [P,L]
+
+# SPA fallback - todas las demás rutas van a index.html
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . /index.html [L]

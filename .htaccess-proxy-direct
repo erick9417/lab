@@ -1,0 +1,10 @@
+RewriteEngine On
+
+# Proxy para el backend Node.js usando mod_proxy
+RewriteCond %{REQUEST_URI} ^/api [NC]
+RewriteRule ^api/(.*)$ http://127.0.0.1:4000/api/$1 [P,L]
+
+# Redirigir todo lo demás al SPA
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.html [L]

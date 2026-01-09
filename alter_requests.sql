@@ -1,0 +1,4 @@
+ALTER TABLE requests ADD COLUMN specs TEXT NULL AFTER shoe_size;
+ALTER TABLE requests ADD COLUMN files TEXT NULL AFTER specs;
+ALTER TABLE requests ADD COLUMN status VARCHAR(32) NOT NULL DEFAULT 'pending' AFTER files;
+ALTER TABLE requests MODIFY COLUMN observations TEXT NULL;
