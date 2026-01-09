@@ -70,23 +70,38 @@ export default function ProductionTicketDetail() {
   }
 
   const handleDownloadFile = (file) => {
-    // Validar que la URL sea válida
-    if (!file.url) {
-      alert('⚠️ El archivo no tiene URL disponible. Puede ser un nombre de archivo guardado sin URL de descarga.')
-      return
+    const maybeUrl = file?.url || file?.path || ''
+    const fileName = file?.filename || file?.name || ''
+
+    let downloadPath = ''
+    if (maybeUrl.startsWith('http')) {
+      downloadPath = maybeUrl
+    } else if (maybeUrl.startsWith('/api/uploads/')) {
+      downloadPath = maybeUrl
+    } else if (maybeUrl.startsWith('/uploads/')) {
+      downloadPath = maybeUrl
+    } else {
+      const last = (maybeUrl.split('/').pop() || fileName || '').trim()
+      if (!last) {
+        alert('⚠️ El archivo no tiene URL disponible. Puede ser un nombre de archivo sin referencia.')
+        return
+      }
+      const safeName = encodeURIComponent(last)
+      const reqId = ticket?.id || ticket?.request_id
+      downloadPath = `/api/uploads/${reqId}/${safeName}`
     }
-    
-    // Si la URL es relativa, construir la URL completa
-    let downloadUrl = file.url
+
+    let downloadUrl = downloadPath
     if (!downloadUrl.startsWith('http')) {
-      const apiBase = import.meta.env.VITE_API_BASE || window.location.origin
-      downloadUrl = `${apiBase}${downloadUrl.startsWith('/') ? '' : '/'}${downloadUrl}`
+      const base = (import.meta.env.VITE_API_BASE || '').replace(/\/$/, '')
+      if (base) {
+        downloadUrl = `${base}${downloadUrl}`
+      }
     }
-    
-    // Crear un elemento de enlace para descargar (no abre en nueva pestaña vacía)
+
     const link = document.createElement('a')
     link.href = downloadUrl
-    link.download = file.name || 'archivo'
+    link.download = file?.name || 'archivo'
     link.target = '_blank'
     link.rel = 'noopener noreferrer'
     document.body.appendChild(link)

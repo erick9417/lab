@@ -12525,18 +12525,35 @@ function ProductionTicketDetail() {
     }
   }
   const handleDownloadFile = (file) => {
-    if (!file.url) {
-      alert("⚠️ El archivo no tiene URL disponible. Puede ser un nombre de archivo guardado sin URL de descarga.");
-      return;
+    const maybeUrl = (file == null ? void 0 : file.url) || (file == null ? void 0 : file.path) || "";
+    const fileName = (file == null ? void 0 : file.filename) || (file == null ? void 0 : file.name) || "";
+    let downloadPath = "";
+    if (maybeUrl.startsWith("http")) {
+      downloadPath = maybeUrl;
+    } else if (maybeUrl.startsWith("/api/uploads/")) {
+      downloadPath = maybeUrl;
+    } else if (maybeUrl.startsWith("/uploads/")) {
+      downloadPath = maybeUrl;
+    } else {
+      const last = (maybeUrl.split("/").pop() || fileName || "").trim();
+      if (!last) {
+        alert("⚠️ El archivo no tiene URL disponible. Puede ser un nombre de archivo sin referencia.");
+        return;
+      }
+      const safeName = encodeURIComponent(last);
+      const reqId = (ticket == null ? void 0 : ticket.id) || (ticket == null ? void 0 : ticket.request_id);
+      downloadPath = `/api/uploads/${reqId}/${safeName}`;
     }
-    let downloadUrl = file.url;
+    let downloadUrl = downloadPath;
     if (!downloadUrl.startsWith("http")) {
-      const apiBase = "https://sistema.lucvanlatam.com";
-      downloadUrl = `${apiBase}${downloadUrl.startsWith("/") ? "" : "/"}${downloadUrl}`;
+      const base = "https://sistema.lucvanlatam.com".replace(/\/$/, "");
+      if (base) {
+        downloadUrl = `${base}${downloadUrl}`;
+      }
     }
     const link = document.createElement("a");
     link.href = downloadUrl;
-    link.download = file.name || "archivo";
+    link.download = (file == null ? void 0 : file.name) || "archivo";
     link.target = "_blank";
     link.rel = "noopener noreferrer";
     document.body.appendChild(link);
@@ -14770,4 +14787,4 @@ function App() {
 client.createRoot(document.getElementById("root")).render(
   /* @__PURE__ */ jsxRuntimeExports.jsx(React$1.StrictMode, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(App, {}) })
 );
-//# sourceMappingURL=index-DWSluCUW.js.map
+//# sourceMappingURL=index-Bd98rVGw.js.map
