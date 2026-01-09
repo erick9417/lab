@@ -85,15 +85,14 @@ export default function WorkshopTicketDetail() {
       // Ruta estática; mantenerla como está
       downloadPath = maybeUrl
     } else {
-      // Solo tenemos un nombre de archivo o algo relativo sin prefijo: usar endpoint API
+      // Solo tenemos un nombre de archivo: en server-pro los archivos están en /uploads/<filename>
       const last = (maybeUrl.split('/').pop() || fileName || '').trim()
       if (!last) {
         alert('⚠️ El archivo no tiene URL disponible. Puede ser un nombre de archivo sin referencia.')
         return
       }
       const safeName = encodeURIComponent(last)
-      const reqId = ticket?.id || ticket?.request_id
-      downloadPath = `/api/uploads/${reqId}/${safeName}`
+      downloadPath = `/uploads/${safeName}`
     }
 
     // Prepend base si es relativo

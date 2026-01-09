@@ -12541,8 +12541,7 @@ function ProductionTicketDetail() {
         return;
       }
       const safeName = encodeURIComponent(last);
-      const reqId = (ticket == null ? void 0 : ticket.id) || (ticket == null ? void 0 : ticket.request_id);
-      downloadPath = `/api/uploads/${reqId}/${safeName}`;
+      downloadPath = `/uploads/${safeName}`;
     }
     let downloadUrl = downloadPath;
     if (!downloadUrl.startsWith("http")) {
@@ -14236,8 +14235,12 @@ function RequestDetail() {
             const name = typeof file === "string" ? file : file.name || "Archivo";
             let url = typeof file === "object" ? file.url || file.path || "" : "";
             if (url && !url.startsWith("http")) {
-              if (!url.startsWith("/api/uploads")) {
-                url = `/api/uploads/${request.id}/${url}`;
+              if (url.startsWith("/api/uploads") || url.startsWith("/uploads/")) ;
+              else {
+                const last = (url.split("/").pop() || "").trim();
+                if (last) {
+                  url = `/uploads/${encodeURIComponent(last)}`;
+                }
               }
             }
             const handleDownload = () => {
@@ -14787,4 +14790,4 @@ function App() {
 client.createRoot(document.getElementById("root")).render(
   /* @__PURE__ */ jsxRuntimeExports.jsx(React$1.StrictMode, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(App, {}) })
 );
-//# sourceMappingURL=index-Bd98rVGw.js.map
+//# sourceMappingURL=index-Ba72sgVT.js.map

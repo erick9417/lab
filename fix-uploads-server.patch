@@ -1,0 +1,14 @@
+--- src/index.js.original
++++ src/index.js.fixed
+@@ -59,7 +59,10 @@
+   const clientDist = path.join(__dirname, '../../lucvan-sistema/dist')
+   if (fs.existsSync(clientDist)) {
+     app.use(express.static(clientDist))
+-    app.get('*', (req, res) => {
++    // SPA fallback - pero excluye /uploads y /api para que sirvan sus archivos/rutas
++    app.get('*', (req, res, next) => {
++      if (req.path.startsWith('/uploads') || req.path.startsWith('/api')) return next()
++      
+       res.sendFile(path.join(clientDist, 'index.html'))
+     })
+   }

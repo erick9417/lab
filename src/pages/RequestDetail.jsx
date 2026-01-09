@@ -388,11 +388,15 @@ export default function RequestDetail() {
                   const name = typeof file === 'string' ? file : (file.name || 'Archivo')
                   let url = typeof file === 'object' ? (file.url || file.path || '') : ''
                   
-                  // Mejorar URL si es relativa
+                  // Mejorar URL si es relativa: usar /uploads/<filename> como fallback
                   if (url && !url.startsWith('http')) {
-                    // Si es relativa, asegurar que tenga /api/uploads
-                    if (!url.startsWith('/api/uploads')) {
-                      url = `/api/uploads/${request.id}/${url}`
+                    if (url.startsWith('/api/uploads') || url.startsWith('/uploads/')) {
+                      // ya es ruta relativa válida
+                    } else {
+                      const last = (url.split('/').pop() || '').trim()
+                      if (last) {
+                        url = `/uploads/${encodeURIComponent(last)}`
+                      }
                     }
                   }
                   

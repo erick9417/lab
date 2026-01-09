@@ -87,8 +87,7 @@ export default function ProductionTicketDetail() {
         return
       }
       const safeName = encodeURIComponent(last)
-      const reqId = ticket?.id || ticket?.request_id
-      downloadPath = `/api/uploads/${reqId}/${safeName}`
+      downloadPath = `/uploads/${safeName}`
     }
 
     let downloadUrl = downloadPath
