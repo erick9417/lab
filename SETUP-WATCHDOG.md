@@ -1,32 +1,55 @@
 #!/bin/bash
 # Instrucciones para configurar el monitoreo automático en el servidor
 
-# 1. Dar permisos de ejecución al script
+# ========== PASO 1: DAR PERMISOS DE EJECUCIÓN ==========
 chmod +x /home/lucvan5/server-pro/watchdog-monitor.sh
+chmod +x /home/lucvan5/server-pro/daily-restart.sh
 
-# 2. Ver el crontab actual
+# ========== PASO 2: VER CRONTAB ACTUAL ==========
 crontab -l
 
-# 3. Editar el crontab (agregar una de estas líneas según lo que prefieras)
+# ========== PASO 3: EDITAR CRONTAB ==========
 crontab -e
 
-# ========== OPCIONES DE CRON ==========
+# ========== CONFIGURACIÓN RECOMENDADA ==========
+# Agregar AMBAS líneas al crontab:
 
-# OPCIÓN 1: Verificar DIARIAMENTE cada hora (recomendado - bajo consumo)
+# Tarea 1: Monitoreo cada hora (verifica si está corriendo)
 0 * * * * /home/lucvan5/server-pro/watchdog-monitor.sh
 
-# OPCIÓN 2: Verificar CADA 6 HORAS (muy eficiente)
-0 */6 * * * /home/lucvan5/server-pro/watchdog-monitor.sh
+# Tarea 2: Reinicio diario a las 2:30 AM (limpia memoria)
+30 2 * * * /home/lucvan5/server-pro/daily-restart.sh
 
-# OPCIÓN 3: Verificar SEMANALMENTE (una vez por semana)
-0 0 * * 0 /home/lucvan5/server-pro/watchdog-monitor.sh
+# ========== QUÉ HACE CADA UNA ==========
 
-# OPCIÓN 4: Verificar CADA 15 MINUTOS (máxima vigilancia)
-*/15 * * * * /home/lucvan5/server-pro/watchdog-monitor.sh
+# WATCHDOG-MONITOR.SH (cada hora)
+# ✅ Verifica si el servidor está corriendo
+# ✅ Si no está → lo reinicia
+# ✅ Verifica consumo de memoria (máx 500MB)
+# ✅ Verifica health check de la API
+# ℹ️ Reinicia SOLO si hay problemas
+
+# DAILY-RESTART.SH (2:30 AM cada día)
+# ✅ Reinicia el servidor siempre
+# ✅ Limpia la memoria acumulada
+# ✅ Se ejecuta a hora de bajo uso
+# ℹ️ Aunque el servidor esté bien, lo reinicia
 
 # ========== VERIFICAR LOGS ==========
-# Para ver el historial de monitoreo:
-tail -50 /home/lucvan5/server-pro/watchdog.log
+# Para ver el historial completo:
+tail -100 /home/lucvan5/server-pro/watchdog.log
 
 # Para ver logs en tiempo real:
 tail -f /home/lucvan5/server-pro/watchdog.log
+
+# Para ver solo eventos del día actual:
+grep "$(date '+%Y-%m-%d')" /home/lucvan5/server-pro/watchdog.log
+
+# ========== EJEMPLO DE TIMELINE DIARIO ==========
+# 00:00 - Servidor corriendo
+# 01:00 - Watchdog verifica → OK
+# 02:00 - Watchdog verifica → OK
+# 02:30 - REINICIO DIARIO programado ← LIMPIA MEMORIA
+# 03:00 - Watchdog verifica → OK (memoria limpia)
+# ...
+# 23:00 - Watchdog verifica → OK
