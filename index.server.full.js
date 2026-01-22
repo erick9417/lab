@@ -1302,6 +1302,21 @@ app.post('/api/requests', upload.array('files', 10), async (req, res) => {
       message: 'Solicitud creada exitosamente'
     })
 
+    // Emitir notificación Socket.IO para producción/workshop
+    try {
+      io.emit('request:created', {
+        type: 'new_request',
+        title: '🆕 Nueva Solicitud',
+        message: `Solicitud #${requestId} de ${request.doctor_name || 'Doctor'}`,
+        timestamp: new Date().toISOString(),
+        requestId: requestId,
+        status: 'pending'
+      })
+      console.log('[SOCKET] Notification emitted for new request:', requestId)
+    } catch (e) {
+      console.warn('[SOCKET] Error emitting notification:', e?.message)
+    }
+
     // Enviar correos (no bloquea la respuesta)
     setImmediate(async () => {
       try {
@@ -1510,6 +1525,33 @@ app.put('/api/requests/:id', async (req, res) => {
     await pool.query(sql, values)
 
     const [rows] = await pool.query('SELECT * FROM requests WHERE id = ?', [requestId])
+    
+    // Emitir notificación Socket.IO si cambió el estado
+    if (statusChanged && status) {
+      try {
+        const statusLabels = {
+          'pending': 'Pendiente',
+          'in_production': 'En Producción',
+          'ready': 'Lista para Entregar',
+          'delivered': 'Entregada',
+          'warranty': 'Garantía',
+          'cancelled': 'Cancelada'
+        }
+        
+        io.emit('request:status-changed', {
+          type: 'status_change',
+          title: '🔄 Estado Actualizado',
+          message: `Solicitud #${requestId} → ${statusLabels[status] || status}`,
+          timestamp: new Date().toISOString(),
+          requestId: requestId,
+          status: status
+        })
+        console.log('[SOCKET] Status change notification emitted:', requestId, status)
+      } catch (e) {
+        console.warn('[SOCKET] Error emitting status notification:', e?.message)
+      }
+    }
+    
     return res.json(rows[0])
   } catch (e) {
     console.error('[REQUESTS] Update error:', e)
