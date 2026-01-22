@@ -2,10 +2,12 @@ import { useEffect, useState } from "react"
 import { Dialog } from "@headlessui/react"
 import CreateUserForm from './CreateUserForm';
 import { CreateClinicForm } from './UserInviteForm';
-import LucvanHeader from "../components/LucvanHeader"
 import { apiFetch } from "../lib/api"
+import { useNavigate } from "react-router-dom"
+import AdminSidebar from "../components/AdminSidebar"
 
 export default function UsersManagement() {
+  const navigate = useNavigate()
   const [tab, setTab] = useState("users")
   const [users, setUsers] = useState([])
   const [clinics, setClinics] = useState([])
@@ -19,6 +21,9 @@ export default function UsersManagement() {
   const [searchClinic, setSearchClinic] = useState("")
   const [showEditClinicModal, setShowEditClinicModal] = useState(false)
   const [editingClinic, setEditingClinic] = useState(null)
+  const [showDeleteClinicConfirm, setShowDeleteClinicConfirm] = useState(false)
+  const [clinicToDelete, setClinicToDelete] = useState(null)
+  const [deleteConfirmText, setDeleteConfirmText] = useState("")
 
   const roleLabels = {
     admin: "Administrador",
@@ -67,10 +72,32 @@ export default function UsersManagement() {
   }
 
   const removeClinic = async (id) => {
-    if (!window.confirm("Confirmar eliminación de clínica")) return
-    const res = await apiFetch(`/api/clinics/${id}`, { method: "DELETE" })
+    const clinic = clinics.find(c => c.id === id)
+    setClinicToDelete(clinic)
+    setDeleteConfirmText("")
+    setShowDeleteClinicConfirm(true)
+  }
+  
+  const confirmDeleteClinic = async () => {
+    if (deleteConfirmText !== 'eliminar clinica') {
+      alert("Debe escribir exactamente: eliminar clinica")
+      return
+    }
+
+    const res = await apiFetch(`/api/clinics/${clinicToDelete.id}`, { 
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ confirmText: deleteConfirmText })
+    })
+    
     if (res.ok) {
-      setClinics(clinics.filter((c) => c.id !== id))
+      const data = await res.json()
+      setClinics(clinics.filter((c) => c.id !== clinicToDelete.id))
+      setUsers(users.filter(u => u.clinic_id !== clinicToDelete.id))
+      setShowDeleteClinicConfirm(false)
+      setClinicToDelete(null)
+      setDeleteConfirmText("")
+      alert(data.message || "Clínica eliminada exitosamente")
     } else {
       const data = await res.json()
       alert(data.error || "Error al eliminar clínica")
@@ -79,7 +106,11 @@ export default function UsersManagement() {
   
   const disableClinic = async (id) => {
     if (!window.confirm("¿Desactivar clínica? Esto también desactivará todos sus usuarios.")) return
-    const res = await apiFetch(`/api/clinics/${id}/disable`, { method: "PATCH" })
+    const res = await apiFetch(`/api/clinics/${id}/disable`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ disabled: true })
+    })
     if (res.ok) {
       setClinics(clinics.map(c => c.id === id ? { ...c, disabled: true } : c))
       setUsers(users.map(u => u.clinic_id === id ? { ...u, disabled: true } : u))
@@ -89,7 +120,11 @@ export default function UsersManagement() {
   }
   
   const enableClinic = async (id) => {
-    const res = await apiFetch(`/api/clinics/${id}/enable`, { method: "PATCH" })
+    const res = await apiFetch(`/api/clinics/${id}/enable`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ disabled: false })
+    })
     if (res.ok) {
       setClinics(clinics.map(c => c.id === id ? { ...c, disabled: false } : c))
     } else {
@@ -99,7 +134,11 @@ export default function UsersManagement() {
 
   const toggleClinicStatus = async (clinic, targetDisabled) => {
     const endpoint = targetDisabled ? "disable" : "enable"
-    const res = await apiFetch(`/api/clinics/${clinic.id}/${endpoint}`, { method: "PATCH" })
+    const res = await apiFetch(`/api/clinics/${clinic.id}/${endpoint}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ disabled: targetDisabled })
+    })
     if (res.ok) {
       setClinics(clinics.map(c => c.id === clinic.id ? { ...c, disabled: targetDisabled } : c))
       if (targetDisabled) {
@@ -128,27 +167,35 @@ export default function UsersManagement() {
   if (loading) return <div className="p-6">Cargando...</div>
   if (error) return <div className="p-6 text-red-600">{error}</div>
 
+  const sidebarTabs = [
+    { id: 'users', label: 'Usuarios' },
+    { id: 'clinics', label: 'Clínicas' },
+    { id: 'admin', label: 'Panel Admin', icon: '⬅️', onClick: () => navigate('/admin') }
+  ]
+
   return (
-    <div className="min-h-screen bg-[#F4F6F8]">
-      <LucvanHeader
-        title="Gestión de Usuarios y Clínicas"
-        user={null}
-        onLogout={() => { window.location.href = "/login" }}
-        showBack={true}
-        onBack={() => window.history.back()}
-      />
-      <div className="p-6 max-w-5xl mx-auto">
-        <div className="flex border-b mb-6">
-          <button className={`px-6 py-2 font-semibold border-b-2 transition-colors ${tab==="users" ? "border-blue-600 text-blue-700 bg-blue-50" : "border-transparent text-gray-500"}`} onClick={()=>setTab("users")}>Usuarios</button>
-          <button className={`px-6 py-2 font-semibold border-b-2 transition-colors ${tab==="clinics" ? "border-blue-600 text-blue-700 bg-blue-50" : "border-transparent text-gray-500"}`} onClick={()=>setTab("clinics")}>Clínicas</button>
-        </div>
+    <div className="min-h-screen bg-[#F4F6F8] flex">
+      <AdminSidebar activeTab={tab} onTabChange={setTab} tabs={sidebarTabs} />
+
+      {/* Contenido principal */}
+      <div className="flex-1 overflow-auto lg:ml-0">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 mt-16 lg:mt-0">
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">
+                {tab === 'users' ? 'Usuarios' : tab === 'clinics' ? 'Clínicas' : 'Pacientes Huérfanos'}
+              </h1>
+              <p className="text-sm text-gray-500 mt-1">Panel de gestión</p>
+            </div>
+            {tab === 'users' ? (
+              <button className="bg-emerald-600 text-white px-4 py-2 rounded shadow hover:bg-emerald-700 transition" onClick={()=>navigate('/admin/users/new')}>Crear nuevo usuario</button>
+            ) : tab === 'clinics' ? (
+              <button className="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 transition" onClick={()=>navigate('/admin/clinics/new')}>Crear nueva clínica</button>
+            ) : null}
+          </div>
 
         {tab === "users" && (
           <div>
-            <div className="flex justify-between items-center mb-4">
-              <span className="text-lg font-semibold">Usuarios</span>
-              <button className="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 transition" onClick={()=>setShowUserModal(true)}>Crear nuevo usuario</button>
-            </div>
             <div className="mb-4">
               <input 
                 type="text" 
@@ -204,10 +251,7 @@ export default function UsersManagement() {
 
         {tab === "clinics" && (
           <div>
-            <div className="flex justify-between items-center mb-4">
-              <span className="text-lg font-semibold">Clínicas</span>
-              <button className="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 transition" onClick={()=>setShowClinicModal(true)}>Crear nueva clínica</button>
-            </div>            <div className="mb-4">
+            <div className="mb-4">
               <input 
                 type="text" 
                 className="w-full border rounded px-3 py-2" 
@@ -215,7 +259,8 @@ export default function UsersManagement() {
                 value={searchClinic}
                 onChange={e=>setSearchClinic(e.target.value)}
               />
-            </div>            <div className="bg-white rounded shadow overflow-x-auto">
+            </div>
+            <div className="bg-white rounded shadow overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-blue-50 text-blue-900">
@@ -340,7 +385,11 @@ export default function UsersManagement() {
                             return;
                           }
                           const endpoint = editingUser.disabled ? "enable" : "disable"
-                          apiFetch(`/api/users/${editingUser.id}/${endpoint}`, { method: "PATCH" }).then(res => {
+                          apiFetch(`/api/users/${editingUser.id}/${endpoint}`, {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ disabled: !editingUser.disabled })
+                          }).then(res => {
                             if (res.ok) {
                               setUsers(users.map((u) => u.id === editingUser.id ? { ...u, disabled: !editingUser.disabled } : u))
                               setEditingUser({ ...editingUser, disabled: !editingUser.disabled })
@@ -443,6 +492,67 @@ export default function UsersManagement() {
             </div>
           </Dialog>
         )}
+
+        {/* Confirmación de eliminación de clínica con CASCADE */}
+        {showDeleteClinicConfirm && clinicToDelete && (
+          <Dialog open={true} onClose={()=>{setShowDeleteClinicConfirm(false); setDeleteConfirmText("");}} className="fixed z-50 inset-0 overflow-y-auto p-4">
+            <div className="flex items-center justify-center min-h-screen">
+              <div className="fixed inset-0 bg-black opacity-30"></div>
+              <div className="relative bg-white rounded-lg shadow-lg p-6 w-full max-w-md mx-auto">
+                <h2 className="text-xl font-bold mb-4 text-red-600">⚠️ Confirmar Eliminación</h2>
+                <div className="space-y-3 mb-6">
+                  <p className="text-gray-700">
+                    Está a punto de eliminar permanentemente la clínica:
+                  </p>
+                  <p className="font-bold text-lg text-gray-900">{clinicToDelete.name}</p>
+                  <div className="bg-red-50 border border-red-200 rounded p-3">
+                    <p className="text-red-800 font-semibold mb-2">⚠️ Esta acción eliminará:</p>
+                    <ul className="list-disc list-inside text-red-700 text-sm space-y-1">
+                      <li>La clínica y toda su información</li>
+                      <li>Todos los usuarios asociados</li>
+                      <li>Todos los pacientes de esta clínica</li>
+                      <li>Todas las solicitudes relacionadas</li>
+                    </ul>
+                    <p className="text-red-800 font-bold mt-2">Esta acción NO se puede deshacer.</p>
+                  </div>
+                  <div className="pt-2">
+                    <label className="block mb-2 font-medium text-gray-700">
+                      Para confirmar, escriba: <span className="font-mono bg-gray-100 px-2 py-1 rounded">eliminar clinica</span>
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full border-2 border-red-300 rounded px-3 py-2 focus:border-red-500 focus:outline-none"
+                      value={deleteConfirmText}
+                      onChange={(e) => setDeleteConfirmText(e.target.value)}
+                      placeholder="Escriba aquí..."
+                      autoFocus
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-3">
+                  <button 
+                    className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 transition"
+                    onClick={()=>{setShowDeleteClinicConfirm(false); setDeleteConfirmText("");}}
+                  >
+                    Cancelar
+                  </button>
+                  <button 
+                    className={`px-4 py-2 rounded text-white transition ${
+                      deleteConfirmText === 'eliminar clinica' 
+                        ? 'bg-red-600 hover:bg-red-700' 
+                        : 'bg-gray-400 cursor-not-allowed'
+                    }`}
+                    onClick={confirmDeleteClinic}
+                    disabled={deleteConfirmText !== 'eliminar clinica'}
+                  >
+                    Eliminar Permanentemente
+                  </button>
+                </div>
+              </div>
+            </div>
+          </Dialog>
+        )}
+        </div>
       </div>
     </div>
   )
@@ -494,7 +604,7 @@ function EditClinicForm({ clinic, onSave, onCancel, onToggleStatus }) {
       id: clinic.id,
       name,
       country,
-      phone: countryCode + phone,
+      phone: phone ? countryCode + phone : null,
       address,
       disabled,
     });
@@ -511,19 +621,7 @@ function EditClinicForm({ clinic, onSave, onCancel, onToggleStatus }) {
         <label className="block mb-1 font-medium">País</label>
         <select className="w-full border rounded px-3 py-2" value={country} onChange={e=>handleCountryChange(e.target.value)} required>
           <option value="">Selecciona un País</option>
-          <option value="Argentina">Argentina</option>
-          <option value="Bolivia">Bolivia</option>
-          <option value="Brasil">Brasil</option>
-          <option value="Chile">Chile</option>
-          <option value="Colombia">Colombia</option>
           <option value="Costa Rica">Costa Rica</option>
-          <option value="Cuba">Cuba</option>
-          <option value="Ecuador">Ecuador</option>
-          <option value="El Salvador">El Salvador</option>
-          <option value="Guatemala">Guatemala</option>
-          <option value="Honduras">Honduras</option>
-          <option value="México">México</option>
-          <option value="Nicaragua">Nicaragua</option>
           <option value="Panamá">Panamá</option>
           <option value="Paraguay">Paraguay</option>
           <option value="Perú">Perú</option>
@@ -537,7 +635,28 @@ function EditClinicForm({ clinic, onSave, onCancel, onToggleStatus }) {
         <label className="block mb-1 font-medium">Teléfono</label>
         <div className="flex gap-2">
           <input type="text" className="w-20 border rounded px-3 py-2 bg-gray-100 font-semibold" value={countryCode} disabled placeholder="Cód." />
-          <input type="tel" className="w-full border rounded px-3 py-2" value={phone} onChange={e=>setPhone(e.target.value)} disabled={!country} placeholder={country ? "Ej: 24304847" : "Seleccione un País primero"} />
+          <input
+            type="text"
+            inputMode="numeric"
+            className="w-full border rounded px-3 py-2"
+            value={phone}
+            onChange={e=>{
+              const digits = e.target.value.replace(/[^0-9]/g, '');
+              setPhone(digits);
+            }}
+            onKeyDown={e=>{
+              if (['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(e.key)) return;
+              if (!/[0-9]/.test(e.key)) e.preventDefault();
+            }}
+            onPaste={e=>{
+              e.preventDefault();
+              const pastedText = e.clipboardData.getData('text');
+              const digits = pastedText.replace(/[^0-9]/g, '');
+              setPhone(phone + digits);
+            }}
+            disabled={!country}
+            placeholder={country ? "Ej: 24304847" : "Seleccione un País primero"}
+          />
         </div>
       </div>
       <div>
